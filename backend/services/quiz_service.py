@@ -14,7 +14,7 @@ class QuizService:
             raise ValueError("GEMINI_API_KEY environment variable is required")
         
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
     
     async def generate_quizzes(self, transcript: Transcript, summary: Summary) -> List[Quiz]:
         """

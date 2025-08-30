@@ -10,7 +10,9 @@ from dotenv import load_dotenv
 from services.youtube_service import YouTubeService
 from services.ai_service import AIService
 from services.quiz_service import QuizService
+from services.transcript_service import TranscriptService
 from models.video_analysis import VideoAnalysis, Summary, Timestamp, Quiz
+from models.transcript import TranscriptRequest, TranscriptResponse, TranscriptError
 
 load_dotenv()
 
@@ -33,6 +35,7 @@ app.add_middleware(
 youtube_service = YouTubeService()
 ai_service = AIService()
 quiz_service = QuizService()
+transcript_service = TranscriptService()
 
 class VideoRequest(BaseModel):
     url: HttpUrl
@@ -53,7 +56,35 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "services": ["youtube", "ai", "quiz"]}
+    return {"status": "healthy", "services": ["youtube", "ai", "quiz", "transcript"]}
+
+@app.post("/transcript", response_model=TranscriptResponse)
+async def get_transcript(request: TranscriptRequest):
+    """
+    Fetch transcript for a YouTube video
+    """
+    try:
+        # Extract video ID from URL
+        try:
+            video_id = transcript_service.extract_video_id(str(request.url))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid YouTube link")
+        
+        # Get transcript
+        transcript_segments = transcript_service.get_transcript(video_id)
+        
+        return TranscriptResponse(
+            video_id=video_id,
+            transcript=transcript_segments
+        )
+        
+    except ValueError as e:
+        if str(e) == "Transcript not found":
+            raise HTTPException(status_code=404, detail="Transcript not found")
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch transcript: {str(e)}")
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_video(request: VideoRequest, background_tasks: BackgroundTasks):
@@ -62,8 +93,9 @@ async def analyze_video(request: VideoRequest, background_tasks: BackgroundTasks
     """
     try:
         # Extract video ID from URL
-        video_id = youtube_service.extract_video_id(str(request.url))
-        if not video_id:
+        try:
+            video_id = youtube_service.extract_video_id(str(request.url))
+        except ValueError:
             raise HTTPException(status_code=400, detail="Invalid YouTube URL")
         
         # Get video metadata
@@ -114,8 +146,9 @@ async def analyze_video_async(request: VideoRequest, background_tasks: Backgroun
     Start async analysis - returns job ID immediately
     """
     try:
-        video_id = youtube_service.extract_video_id(str(request.url))
-        if not video_id:
+        try:
+            video_id = youtube_service.extract_video_id(str(request.url))
+        except ValueError:
             raise HTTPException(status_code=400, detail="Invalid YouTube URL")
         
         # Generate job ID
