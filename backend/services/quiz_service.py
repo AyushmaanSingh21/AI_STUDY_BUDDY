@@ -27,10 +27,10 @@ class QuizService:
             comprehensive_quiz = await self._generate_comprehensive_quiz(transcript, summary)
             quizzes.append(comprehensive_quiz)
             
-            # Generate topic-specific quizzes if there are multiple topics
-            if len(summary.main_topics) > 1:
-                topic_quizzes = await self._generate_topic_quizzes(transcript, summary)
-                quizzes.extend(topic_quizzes)
+            # Generate additional quizzes based on content complexity
+            additional_quiz = await self._generate_additional_quiz(transcript, summary)
+            if additional_quiz:
+                quizzes.append(additional_quiz)
             
             return quizzes
             
@@ -45,9 +45,7 @@ class QuizService:
         Create a comprehensive quiz based on this educational video content.
         
         Video Summary:
-        Overview: {summary.overview}
-        Key Points: {', '.join(summary.key_points)}
-        Main Topics: {', '.join(summary.main_topics)}
+        {summary.clean_summary}
         Difficulty: {summary.difficulty_level}
         
         Transcript (first 3000 characters):
@@ -71,7 +69,7 @@ class QuizService:
                     "correct_answer": "A. Option 1",
                     "explanation": "Explanation of why this is correct",
                     "difficulty": "easy|medium|hard",
-                    "topic": "Topic name"
+                    "topic": "General"
                 }}
             ],
             "total_questions": 5,
@@ -89,58 +87,52 @@ class QuizService:
         except json.JSONDecodeError:
             return self._create_fallback_quiz("Comprehensive Quiz", summary)
     
-    async def _generate_topic_quizzes(self, transcript: Transcript, summary: Summary) -> List[Quiz]:
+    async def _generate_additional_quiz(self, transcript: Transcript, summary: Summary) -> Quiz:
         """
-        Generate topic-specific quizzes
+        Generate an additional quiz focusing on specific aspects
         """
-        quizzes = []
+        prompt = f"""
+        Create a focused quiz based on this educational video content.
         
-        for topic in summary.main_topics[:3]:  # Limit to 3 topics to avoid too many quizzes
-            prompt = f"""
-            Create a focused quiz for the topic: "{topic}"
-            
-            Video Summary:
-            Overview: {summary.overview}
-            Key Points: {', '.join(summary.key_points)}
-            Difficulty: {summary.difficulty_level}
-            
-            Transcript (first 2000 characters):
-            {transcript.full_text[:2000]}
-            
-            Generate 3-5 multiple choice questions specifically about "{topic}" that:
-            1. Test deep understanding of this specific topic
-            2. Include both theoretical and practical questions
-            3. Have clear, correct answers
-            4. Provide helpful explanations
-            
-            Return as JSON:
-            {{
-                "title": "{topic} Quiz",
-                "description": "Test your knowledge of {topic}",
-                "questions": [
-                    {{
-                        "question": "Question about {topic}?",
-                        "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
-                        "correct_answer": "A. Option 1",
-                        "explanation": "Explanation",
-                        "difficulty": "medium",
-                        "topic": "{topic}"
-                    }}
-                ],
-                "total_questions": 3,
-                "estimated_time": 5
-            }}
-            """
-            
-            try:
-                response = self._make_gemini_call(prompt)
-                quiz_data = json.loads(response)
-                quizzes.append(Quiz(**quiz_data))
-            except (json.JSONDecodeError, Exception):
-                # Skip this topic if generation fails
-                continue
+        Video Summary:
+        {summary.clean_summary}
+        Difficulty: {summary.difficulty_level}
         
-        return quizzes
+        Transcript (first 2000 characters):
+        {transcript.full_text[:2000]}
+        
+        Generate 3-5 multiple choice questions that:
+        1. Focus on practical applications
+        2. Test deeper understanding
+        3. Include scenario-based questions
+        4. Have clear, correct answers
+        5. Provide helpful explanations
+        
+        Return as JSON:
+        {{
+            "title": "Advanced Concepts Quiz",
+            "description": "Test your deeper understanding of key concepts",
+            "questions": [
+                {{
+                    "question": "Question about advanced concepts?",
+                    "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
+                    "correct_answer": "A. Option 1",
+                    "explanation": "Explanation",
+                    "difficulty": "medium",
+                    "topic": "Advanced Concepts"
+                }}
+            ],
+            "total_questions": 3,
+            "estimated_time": 5
+        }}
+        """
+        
+        try:
+            response = self._make_gemini_call(prompt)
+            quiz_data = json.loads(response)
+            return Quiz(**quiz_data)
+        except (json.JSONDecodeError, Exception):
+            return None
     
     async def generate_flashcards(self, transcript: Transcript, summary: Summary) -> List[Dict[str, str]]:
         """
@@ -150,9 +142,7 @@ class QuizService:
         Create flashcards based on this educational content.
         
         Video Summary:
-        Overview: {summary.overview}
-        Key Points: {', '.join(summary.key_points)}
-        Main Topics: {', '.join(summary.main_topics)}
+        {summary.clean_summary}
         
         Transcript (first 2000 characters):
         {transcript.full_text[:2000]}
@@ -198,24 +188,28 @@ class QuizService:
         """
         Create a basic quiz when AI generation fails
         """
+        # Create simple questions based on the summary content
         questions = []
         
-        # Create simple questions based on key points
-        for i, point in enumerate(summary.key_points[:5]):
-            question = QuizQuestion(
-                question=f"What is the main focus of: {point}?",
-                options=[
-                    f"A. {point}",
-                    f"B. Something else",
-                    f"C. Not related",
-                    f"D. Opposite of {point}"
-                ],
-                correct_answer=f"A. {point}",
-                explanation=f"This question tests understanding of {point}",
-                difficulty="medium",
-                topic="General"
-            )
-            questions.append(question)
+        # Split the summary into sentences and create questions
+        summary_sentences = summary.clean_summary.split('. ')
+        
+        for i, sentence in enumerate(summary_sentences[:5]):
+            if sentence.strip():
+                question = QuizQuestion(
+                    question=f"What is the main focus of this content?",
+                    options=[
+                        "A. Educational content",
+                        "B. Entertainment",
+                        "C. Technical documentation",
+                        "D. News report"
+                    ],
+                    correct_answer="A. Educational content",
+                    explanation=f"This question tests understanding of the video content",
+                    difficulty="medium",
+                    topic="General"
+                )
+                questions.append(question)
         
         return Quiz(
             title=title,
@@ -231,11 +225,15 @@ class QuizService:
         """
         flashcards = []
         
-        for point in summary.key_points[:10]:
-            flashcards.append({
-                "front": f"What is {point}?",
-                "back": f"Key concept: {point}"
-            })
+        # Create flashcards based on the summary content
+        summary_sentences = summary.clean_summary.split('. ')
+        
+        for i, sentence in enumerate(summary_sentences[:10]):
+            if sentence.strip():
+                flashcards.append({
+                    "front": f"What is the main topic of this video?",
+                    "back": f"Key concept: {sentence[:50]}..."
+                })
         
         return flashcards
     
@@ -267,5 +265,4 @@ class QuizService:
             results["feedback"].append(feedback)
         
         results["score_percentage"] = (results["correct_answers"] / results["total_questions"]) * 100
-        
         return results

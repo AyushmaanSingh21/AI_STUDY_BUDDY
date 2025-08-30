@@ -4,9 +4,7 @@ from datetime import datetime
 
 class Summary(BaseModel):
     """Summary of the video content"""
-    overview: str
-    key_points: List[str]
-    main_topics: List[str]
+    clean_summary: str  # Single clean summary paragraph (~100 words)
     difficulty_level: str  # beginner, intermediate, advanced
     estimated_reading_time: int  # in minutes
 

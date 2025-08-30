@@ -17,45 +17,49 @@ class AIService:
     
     async def generate_summary(self, transcript: Transcript, depth: str = "medium") -> Summary:
         """
-        Generate a comprehensive summary of the video content
+        Generate a clean, concise summary of the video content
         """
         try:
             # Prepare the prompt based on depth
             depth_instructions = {
-                "short": "Create a very brief 2-3 sentence overview with 3-5 key points",
-                "medium": "Create a comprehensive overview with 5-8 key points and main topics",
-                "detailed": "Create a detailed overview with 8-12 key points, main topics, and subtopics"
+                "short": "Create a very brief summary (around 50-75 words)",
+                "medium": "Create a concise summary (around 100 words)",
+                "detailed": "Create a comprehensive summary (around 125-150 words)"
             }
             
             prompt = f"""
-            Analyze this video transcript and create a structured summary.
+            Analyze this video transcript and create a single, clean summary paragraph.
             
             {depth_instructions.get(depth, depth_instructions["medium"])}
             
             Transcript:
             {transcript.full_text[:4000]}  # Limit to avoid token limits
             
-            Please provide your response in the following JSON format:
-            {{
-                "overview": "A concise overview of the video content",
-                "key_points": ["point1", "point2", "point3"],
-                "main_topics": ["topic1", "topic2", "topic3"],
-                "difficulty_level": "beginner|intermediate|advanced",
-                "estimated_reading_time": 5
-            }}
+            Requirements:
+            - Write in clear, simple language
+            - Focus on the main content and key takeaways
+            - Do not include section titles or bullet points
+            - Write as a flowing paragraph
+            - Make it educational and easy to understand
+            - Avoid technical jargon unless necessary
             
-            Focus on educational value and clarity.
+            Return your response as a single paragraph of text, nothing else.
             """
             
             response = self._make_gemini_call(prompt)
             
-            # Parse the response
-            try:
-                summary_data = json.loads(response)
-                return Summary(**summary_data)
-            except json.JSONDecodeError:
-                # Fallback: create a basic summary
-                return self._create_fallback_summary(transcript)
+            # Clean the response to ensure it's just the summary text
+            clean_summary = response.strip()
+            
+            # Analyze difficulty and reading time
+            difficulty = await self.analyze_difficulty(transcript)
+            reading_time = max(1, transcript.word_count // 200)  # Rough estimate: 200 words per minute
+            
+            return Summary(
+                clean_summary=clean_summary,
+                difficulty_level=difficulty,
+                estimated_reading_time=reading_time
+            )
                 
         except Exception as e:
             raise Exception(f"Failed to generate summary: {str(e)}")
@@ -181,21 +185,11 @@ class AIService:
         """
         Create a basic summary when AI generation fails
         """
-        # Simple word frequency analysis for key points
-        words = transcript.full_text.lower().split()
-        word_freq = {}
-        
-        for word in words:
-            if len(word) > 3:  # Skip short words
-                word_freq[word] = word_freq.get(word, 0) + 1
-        
-        # Get most frequent words as key points
-        key_points = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]
+        # Create a simple fallback summary
+        fallback_text = f"This video covers various topics discussed in the transcript. The content appears to be educational in nature and provides information on the subject matter covered throughout the video."
         
         return Summary(
-            overview="Video content analysis completed successfully.",
-            key_points=[point[0] for point in key_points],
-            main_topics=["General Content"],
+            clean_summary=fallback_text,
             difficulty_level="intermediate",
             estimated_reading_time=max(1, transcript.word_count // 200)
         )

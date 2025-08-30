@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Download, CheckCircle, Sparkles, Target, Clock } from 'lucide-react';
+import { BookOpen, Download, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const SummarySection = ({ summary }) => {
@@ -7,17 +7,14 @@ const SummarySection = ({ summary }) => {
     const notesContent = `
 Video Summary Notes
 
-OVERVIEW:
-${summary.overview}
+SUMMARY:
+${summary.clean_summary}
 
-KEY POINTS:
-${summary.key_points.map((point, index) => `${index + 1}. ${point}`).join('\n')}
-
-MAIN TOPICS:
-${summary.main_topics.join(', ')}
+DIFFICULTY LEVEL: ${summary.difficulty_level}
+ESTIMATED READING TIME: ${summary.estimated_reading_time} minutes
 
 STUDY TIPS:
-• Review the key points before diving into specific topics
+• Review the summary to understand the main concepts
 • Use the timestamps to jump to sections you need to review
 • Take the quizzes to test your understanding
 • Focus on topics that match your current skill level
@@ -61,53 +58,33 @@ STUDY TIPS:
         </motion.button>
       </div>
 
-      {/* Overview */}
+      {/* Clean Summary */}
       <div className="mb-6 flex-1">
         <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center space-x-2">
           <Sparkles className="w-5 h-5 text-yellow-500" />
-          <span>Overview</span>
+          <span>Video Summary</span>
         </h3>
-        <p className="text-gray-700 leading-relaxed mb-4">
-          {summary.overview}
-        </p>
-      </div>
-
-      {/* Key Points */}
-      <div className="mb-6 flex-1">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Key Points</h3>
-        <div className="space-y-3">
-          {summary.key_points.map((point, index) => (
-            <motion.div 
-              key={index}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-              className="flex items-start space-x-3"
-            >
-              <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mt-0.5">
-                <span className="text-white text-sm font-semibold">{index + 1}</span>
-              </div>
-              <span className="text-gray-700">{point}</span>
-            </motion.div>
-          ))}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-200">
+          <p className="text-gray-700 leading-relaxed text-base">
+            {summary.clean_summary}
+          </p>
         </div>
       </div>
 
-      {/* Main Topics */}
-      <div className="mb-6 flex-1">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Main Topics</h3>
-        <div className="flex flex-wrap gap-2">
-          {summary.main_topics.map((topic, index) => (
-            <motion.span
-              key={index}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-              className="px-3 py-1 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 rounded-full text-sm font-medium border border-blue-200"
-            >
-              {topic}
-            </motion.span>
-          ))}
+      {/* Video Stats */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="text-center p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+          <div className="text-2xl font-bold text-green-600 capitalize">
+            {summary.difficulty_level}
+          </div>
+          <p className="text-sm text-gray-600">Difficulty Level</p>
+        </div>
+        
+        <div className="text-center p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+          <div className="text-2xl font-bold text-purple-600">
+            {summary.estimated_reading_time}
+          </div>
+          <p className="text-sm text-gray-600">Min Read</p>
         </div>
       </div>
 
@@ -118,11 +95,11 @@ STUDY TIPS:
           <ul className="space-y-2 text-gray-700 text-sm">
             <li className="flex items-start space-x-2">
               <span className="text-blue-600">•</span>
-              <span>Review key points before diving into specific topics</span>
+              <span>Review the summary to understand main concepts</span>
             </li>
             <li className="flex items-start space-x-2">
               <span className="text-blue-600">•</span>
-              <span>Use timestamps to jump to sections you need</span>
+              <span>Use timestamps to jump to specific sections</span>
             </li>
             <li className="flex items-start space-x-2">
               <span className="text-blue-600">•</span>
