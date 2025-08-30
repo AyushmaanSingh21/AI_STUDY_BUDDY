@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Clock, Play, Tag, Search } from 'lucide-react';
+import { Clock, Play, Tag, Search, Filter, Target, BookOpen } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const TimestampsSection = ({ timestamps, videoId }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,52 +33,56 @@ const TimestampsSection = ({ timestamps, videoId }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+      className="bg-white rounded-2xl shadow-xl border border-gray-200/50 p-6 h-full flex flex-col"
+    >
+      {/* Header */}
+      <div className="flex items-center space-x-3 mb-6">
+        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl flex items-center justify-center">
+          <Clock className="w-5 h-5 text-white" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900">Timestamps</h2>
+      </div>
+
       {/* Search and Filter */}
-      <div className="card">
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search Timestamps
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by topic, description, or keywords..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-field pl-10"
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filter by Topic
-            </label>
-            <select
-              value={selectedTopic}
-              onChange={(e) => setSelectedTopic(e.target.value)}
-              className="input-field"
-            >
-              {topics.map(topic => (
-                <option key={topic} value={topic}>
-                  {topic === 'all' ? 'All Topics' : topic}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="space-y-4 mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search timestamps..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+          />
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Filter className="w-4 h-4 text-gray-500" />
+          <select
+            value={selectedTopic}
+            onChange={(e) => setSelectedTopic(e.target.value)}
+            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+          >
+            {topics.map(topic => (
+              <option key={topic} value={topic}>
+                {topic === 'all' ? 'All Topics' : topic}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
       {/* Timestamps List */}
-      <div className="space-y-4">
+      <div className="space-y-3 flex-1 overflow-y-auto min-h-0">
         {filteredTimestamps.length === 0 ? (
-          <div className="card text-center py-8">
+          <div className="text-center py-8">
             <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No timestamps found</h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm">
               {searchTerm || selectedTopic !== 'all' 
                 ? 'Try adjusting your search or filter criteria'
                 : 'No timestamps available for this video'
@@ -86,94 +91,103 @@ const TimestampsSection = ({ timestamps, videoId }) => {
           </div>
         ) : (
           filteredTimestamps.map((timestamp, index) => (
-            <div key={index} className="card hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleTimestampClick(timestamp)}>
+            <motion.div 
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              whileHover={{ scale: 1.02 }}
+              className="p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer bg-gray-50/50"
+              onClick={() => handleTimestampClick(timestamp)}
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium">
-                      <Play className="w-4 h-4" />
-                      <span className="text-lg">{timestamp.time}</span>
-                    </button>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                  {/* Topic Badge */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="px-2 py-1 bg-gradient-to-r from-green-100 to-blue-100 text-green-800 rounded-full text-xs font-medium border border-green-200">
                       {timestamp.topic}
                     </span>
                   </div>
                   
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {timestamp.topic}
-                  </h3>
+                  {/* Time and Play Button */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <motion.button 
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span className="text-sm font-semibold">{timestamp.time}</span>
+                    </motion.button>
+                  </div>
                   
-                  <p className="text-gray-600 mb-3">
+                  {/* Description */}
+                  <p className="text-gray-700 text-sm mb-2 line-clamp-2">
                     {timestamp.description}
                   </p>
                   
+                  {/* Keywords */}
                   <div className="flex flex-wrap gap-1">
-                    {timestamp.keywords.map((keyword, keywordIndex) => (
+                    {timestamp.keywords.slice(0, 3).map((keyword, keywordIndex) => (
                       <span
                         key={keywordIndex}
-                        className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                        className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
                       >
                         <Tag className="w-3 h-3 mr-1" />
                         {keyword}
                       </span>
                     ))}
+                    {timestamp.keywords.length > 3 && (
+                      <span className="text-xs text-gray-500 px-2 py-1">
+                        +{timestamp.keywords.length - 3} more
+                      </span>
+                    )}
                   </div>
                 </div>
                 
-                <div className="ml-4 text-right">
-                  <div className="text-sm text-gray-500">
+                <div className="ml-3 text-right">
+                  <div className="text-xs text-gray-500 font-mono">
                     {formatTime(timestamp.seconds)}
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))
         )}
       </div>
 
       {/* Summary Stats */}
-      <div className="card bg-gray-50">
-        <div className="grid md:grid-cols-3 gap-4 text-center">
+      <div className="mt-6 pt-4 border-t border-gray-200">
+        <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-2xl font-bold text-gray-900">{timestamps.length}</p>
-            <p className="text-sm text-gray-600">Total Timestamps</p>
+            <p className="text-lg font-bold text-gray-900">{timestamps.length}</p>
+            <p className="text-xs text-gray-600">Total</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">{topics.length - 1}</p>
-            <p className="text-sm text-gray-600">Topics Covered</p>
+            <p className="text-lg font-bold text-gray-900">{topics.length - 1}</p>
+            <p className="text-xs text-gray-600">Topics</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-lg font-bold text-gray-900">
               {Math.floor(timestamps.reduce((acc, ts) => acc + ts.seconds, 0) / 60)}:{(timestamps.reduce((acc, ts) => acc + ts.seconds, 0) % 60).toString().padStart(2, '0')}
             </p>
-            <p className="text-sm text-gray-600">Total Duration</p>
+            <p className="text-xs text-gray-600">Duration</p>
           </div>
         </div>
       </div>
 
       {/* Instructions */}
-      <div className="card bg-blue-50 border-blue-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">🎯 How to Use Timestamps</h3>
-        <ul className="space-y-2 text-gray-700">
-          <li className="flex items-start space-x-2">
-            <span className="text-blue-600">•</span>
-            <span>Click on any timestamp to jump directly to that section in the original video</span>
-          </li>
-          <li className="flex items-start space-x-2">
-            <span className="text-blue-600">•</span>
-            <span>Use the search to find specific topics or concepts</span>
-          </li>
-          <li className="flex items-start space-x-2">
-            <span className="text-blue-600">•</span>
-            <span>Filter by topic to focus on particular areas of interest</span>
-          </li>
-          <li className="flex items-start space-x-2">
-            <span className="text-blue-600">•</span>
-            <span>Review the keywords to understand what each section covers</span>
-          </li>
-        </ul>
+      <div className="mt-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-2">💡 How to Use</h3>
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-3 border border-green-200">
+          <ul className="space-y-1 text-gray-700 text-xs">
+            <li>• Click timestamps to jump to video sections</li>
+            <li>• Use search to find specific topics</li>
+            <li>• Filter by topic to focus on areas</li>
+          </ul>
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

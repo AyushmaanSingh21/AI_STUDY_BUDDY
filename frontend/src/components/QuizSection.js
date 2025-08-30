@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Brain, CheckCircle, XCircle, Trophy, Clock, Target } from 'lucide-react';
+import { Brain, CheckCircle, XCircle, Trophy, Clock, Target, Zap, Star, BookOpen } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const QuizSection = ({ quizzes }) => {
   const [selectedQuiz, setSelectedQuiz] = useState(0);
@@ -70,24 +71,46 @@ const QuizSection = ({ quizzes }) => {
     return 'Keep studying! Review the material and try again.';
   };
 
+  const getScoreEmoji = (percentage) => {
+    if (percentage >= 90) return '🎉';
+    if (percentage >= 80) return '🎯';
+    if (percentage >= 60) return '👍';
+    return '📚';
+  };
+
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+      className="bg-white rounded-2xl shadow-xl border border-gray-200/50 p-6 h-full flex flex-col"
+    >
+      {/* Header */}
+      <div className="flex items-center space-x-3 mb-6">
+        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+          <Brain className="w-5 h-5 text-white" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900">Quizzes</h2>
+      </div>
+
       {/* Quiz Selection */}
       {quizzes.length > 1 && (
-        <div className="card">
+        <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Quiz</h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-3">
             {quizzes.map((quiz, index) => (
-              <button
+              <motion.button
                 key={index}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setSelectedQuiz(index);
                   resetQuiz();
                 }}
-                className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                className={`p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                   selectedQuiz === index
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-purple-500 bg-purple-50 shadow-md'
+                    : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
                 }`}
               >
                 <h4 className="font-semibold text-gray-900">{quiz.title}</h4>
@@ -102,49 +125,57 @@ const QuizSection = ({ quizzes }) => {
                     <span>{quiz.estimated_time} min</span>
                   </span>
                 </div>
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
       )}
 
       {/* Current Quiz */}
-      <div className="card">
+      <div className="border-t border-gray-200 pt-6 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{currentQuiz.title}</h2>
-            <p className="text-gray-600">{currentQuiz.description}</p>
+            <h2 className="text-xl font-bold text-gray-900">{currentQuiz.title}</h2>
+            <p className="text-gray-600 text-sm">{currentQuiz.description}</p>
           </div>
           <div className="text-right">
             <div className="text-sm text-gray-500">
               {Object.keys(userAnswers).length} / {currentQuiz.questions.length} answered
             </div>
             <div className="text-sm text-gray-500">
-              Estimated time: {currentQuiz.estimated_time} minutes
+              ~{currentQuiz.estimated_time} min
             </div>
           </div>
         </div>
 
         {!showResults ? (
-          <div className="space-y-8">
+          <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
             {currentQuiz.questions.map((question, questionIndex) => (
-              <div key={questionIndex} className="border-b border-gray-200 pb-6 last:border-b-0">
+              <motion.div 
+                key={questionIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: questionIndex * 0.1 }}
+                className="border border-gray-200 rounded-xl p-4 hover:border-purple-300 transition-colors duration-200"
+              >
                 <div className="flex items-start space-x-3 mb-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold text-sm">{questionIndex + 1}</span>
+                  <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">{questionIndex + 1}</span>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       {question.question}
                     </h3>
                     <div className="space-y-2">
                       {question.options.map((option, optionIndex) => (
-                        <label
+                        <motion.label
                           key={optionIndex}
-                          className={`flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                             userAnswers[questionIndex] === option
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-gray-300'
+                              ? 'border-purple-500 bg-purple-50 shadow-sm'
+                              : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
                           }`}
                         >
                           <input
@@ -153,141 +184,105 @@ const QuizSection = ({ quizzes }) => {
                             value={option}
                             checked={userAnswers[questionIndex] === option}
                             onChange={() => handleAnswerSelect(questionIndex, option)}
-                            className="text-blue-600 focus:ring-blue-500"
+                            className="text-purple-600 focus:ring-purple-500"
                           />
                           <span className="text-gray-700">{option}</span>
-                        </label>
+                        </motion.label>
                       ))}
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
 
-            <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-              <button
+            <div className="flex justify-between items-center pt-6 border-t border-gray-200 mt-auto">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={resetQuiz}
-                className="btn-secondary"
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200"
               >
                 Reset Quiz
-              </button>
+              </motion.button>
               
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleSubmitQuiz}
                 disabled={Object.keys(userAnswers).length < currentQuiz.questions.length}
-                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
               >
                 Submit Quiz
-              </button>
+              </motion.button>
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 flex-1 flex flex-col">
             {/* Results Summary */}
-            <div className="text-center space-y-4">
-              <div className={`text-6xl font-bold ${getScoreColor(quizResults.scorePercentage)}`}>
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, type: "spring" }}
+              className="text-center space-y-4 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-200"
+            >
+              <div className="text-6xl mb-2">{getScoreEmoji(quizResults.scorePercentage)}</div>
+              <div className={`text-5xl font-bold ${getScoreColor(quizResults.scorePercentage)}`}>
                 {quizResults.scorePercentage}%
               </div>
               <h3 className="text-xl font-semibold text-gray-900">
                 {getScoreMessage(quizResults.scorePercentage)}
               </h3>
               <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
-                <span>{quizResults.correctAnswers} out of {quizResults.totalQuestions} correct</span>
+                <span className="flex items-center space-x-1">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span>{quizResults.correctAnswers} correct</span>
+                </span>
+                <span className="text-gray-400">•</span>
+                <span>{quizResults.totalQuestions} total</span>
               </div>
-            </div>
-
-            {/* Detailed Feedback */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-gray-900">Question Review</h4>
-              {quizResults.feedback.map((feedback, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3 mb-3">
-                    {feedback.isCorrect ? (
-                      <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
-                    )}
-                    <div className="flex-1">
-                      <h5 className="font-semibold text-gray-900">
-                        Question {index + 1}
-                      </h5>
-                      <p className="text-gray-700 mt-1">
-                        {currentQuiz.questions[index].question}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Your answer:</span>
-                      <p className={`mt-1 ${feedback.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                        {feedback.userAnswer}
-                      </p>
-                    </div>
-                    {!feedback.isCorrect && (
-                      <div>
-                        <span className="font-medium text-gray-700">Correct answer:</span>
-                        <p className="text-green-600 mt-1">{feedback.correctAnswer}</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                    <span className="font-medium text-gray-700">Explanation:</span>
-                    <p className="text-gray-700 mt-1">{feedback.explanation}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            </motion.div>
 
             {/* Action Buttons */}
-            <div className="flex justify-center space-x-4 pt-6 border-t border-gray-200">
-              <button
+            <div className="flex justify-center space-x-4 pt-4 mt-auto">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={resetQuiz}
-                className="btn-secondary"
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200"
               >
                 Try Again
-              </button>
+              </motion.button>
               
               {selectedQuiz < quizzes.length - 1 && (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => {
                     setSelectedQuiz(selectedQuiz + 1);
                     resetQuiz();
                   }}
-                  className="btn-primary"
+                  className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all duration-200"
                 >
                   Next Quiz
-                </button>
+                </motion.button>
               )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Study Tips */}
-      <div className="card bg-blue-50 border-blue-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">🧠 Quiz Tips</h3>
-        <ul className="space-y-2 text-gray-700">
-          <li className="flex items-start space-x-2">
-            <span className="text-blue-600">•</span>
-            <span>Read each question carefully before selecting your answer</span>
-          </li>
-          <li className="flex items-start space-x-2">
-            <span className="text-blue-600">•</span>
-            <span>Review the explanations to understand why answers are correct or incorrect</span>
-          </li>
-          <li className="flex items-start space-x-2">
-            <span className="text-blue-600">•</span>
-            <span>Use the quiz results to identify areas that need more study</span>
-          </li>
-          <li className="flex items-start space-x-2">
-            <span className="text-blue-600">•</span>
-            <span>Take multiple quizzes to reinforce your learning</span>
-          </li>
-        </ul>
+      {/* Quiz Tips */}
+      <div className="mt-6 pt-4 border-t border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-900 mb-2">🧠 Quiz Tips</h3>
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-3 border border-purple-200">
+          <ul className="space-y-1 text-gray-700 text-xs">
+            <li>• Read questions carefully before answering</li>
+            <li>• Review explanations to understand concepts</li>
+            <li>• Use results to identify study areas</li>
+          </ul>
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

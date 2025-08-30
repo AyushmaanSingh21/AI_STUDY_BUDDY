@@ -9,7 +9,7 @@ import AboutPage from './pages/AboutPage';
 function App() {
   return (
     <Router>
-      <div className="App min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="App min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Header />
         <main className="container mx-auto px-4 py-8">
           <Routes>

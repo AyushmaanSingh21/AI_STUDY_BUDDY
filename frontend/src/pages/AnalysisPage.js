@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, Clock, BookOpen, Brain, Download, Play, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, BookOpen, Brain, Download, Play, CheckCircle, XCircle, Eye, Target, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
 import SummarySection from '../components/SummarySection';
 import TimestampsSection from '../components/TimestampsSection';
 import QuizSection from '../components/QuizSection';
@@ -11,7 +12,6 @@ const AnalysisPage = () => {
   const [analysisData, setAnalysisData] = useState(location.state?.analysisData || null);
   const [loading, setLoading] = useState(!analysisData);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('summary');
 
   useEffect(() => {
     if (!analysisData) {
@@ -73,14 +73,8 @@ const AnalysisPage = () => {
     );
   }
 
-  const tabs = [
-    { id: 'summary', label: 'Summary', icon: <BookOpen className="w-4 h-4" /> },
-    { id: 'timestamps', label: 'Timestamps', icon: <Clock className="w-4 h-4" /> },
-    { id: 'quizzes', label: 'Quizzes', icon: <Brain className="w-4 h-4" /> }
-  ];
-
   return (
-    <div className="space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -89,96 +83,144 @@ const AnalysisPage = () => {
             Back
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{analysisData.title}</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              {analysisData.title}
+            </h1>
             <p className="text-gray-600">Video ID: {videoId}</p>
           </div>
         </div>
-        
-        <div className="flex items-center space-x-2">
-          <button className="btn-secondary">
-            <Download className="w-4 h-4 mr-2" />
-            Export PDF
-          </button>
-        </div>
       </div>
 
-      {/* Video Info */}
-      <div className="card">
-        <div className="grid md:grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-sm text-gray-500">Duration</p>
-            <p className="text-lg font-semibold text-gray-900">
-              {Math.floor(analysisData.duration / 60)}:{(analysisData.duration % 60).toString().padStart(2, '0')}
-            </p>
+      {/* Video Info Card - Long Rectangle Below Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full"
+      >
+        <motion.div 
+          whileHover={{ scale: 1.01 }}
+          className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 p-6 w-full"
+        >
+          <div className="flex items-center space-x-6">
+            {/* Video Thumbnail */}
+            <div className="relative flex-shrink-0">
+              <img 
+                src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                alt="Video thumbnail"
+                className="w-32 h-24 rounded-xl object-cover shadow-lg"
+              />
+              <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center">
+                <Play className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            
+            {/* Video Stats */}
+            <div className="flex-1 grid grid-cols-3 gap-8">
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <Clock className="w-6 h-6 text-blue-500" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {Math.floor(analysisData.duration / 60)}:{(analysisData.duration % 60).toString().padStart(2, '0')}
+                </p>
+                <p className="text-sm text-gray-600">Duration</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <Target className="w-6 h-6 text-purple-500" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 capitalize">
+                  {analysisData.summary.difficulty_level}
+                </p>
+                <p className="text-sm text-gray-600">Difficulty</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <BookOpen className="w-6 h-6 text-green-500" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {analysisData.summary.estimated_reading_time}
+                </p>
+                <p className="text-sm text-gray-600">Min Read</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Difficulty</p>
-            <p className="text-lg font-semibold text-gray-900 capitalize">
-              {analysisData.summary.difficulty_level}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Reading Time</p>
-            <p className="text-lg font-semibold text-gray-900">
-              {analysisData.summary.estimated_reading_time} min
-            </p>
-          </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="min-h-96">
-        {activeTab === 'summary' && (
+      {/* Main Content - 3 Cards Grid */}
+      <div className="grid lg:grid-cols-3 gap-8 mt-8">
+        {/* Summary Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="lg:col-span-1 flex"
+        >
           <SummarySection summary={analysisData.summary} />
-        )}
-        
-        {activeTab === 'timestamps' && (
+        </motion.div>
+
+        {/* Timestamps Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="lg:col-span-1 flex"
+        >
           <TimestampsSection timestamps={analysisData.timestamps} videoId={videoId} />
-        )}
-        
-        {activeTab === 'quizzes' && (
+        </motion.div>
+
+        {/* Quizzes Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="lg:col-span-1 flex"
+        >
           <QuizSection quizzes={analysisData.quizzes} />
-        )}
+        </motion.div>
       </div>
 
       {/* Quick Actions */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100"
+      >
+        <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">🚀 Quick Actions</h3>
         <div className="grid md:grid-cols-3 gap-4">
-          <button className="btn-secondary">
-            <Play className="w-4 h-4 mr-2" />
-            Watch Original Video
-          </button>
-          <button className="btn-secondary">
-            <Download className="w-4 h-4 mr-2" />
-            Download Notes
-          </button>
-          <button className="btn-secondary">
-            <Brain className="w-4 h-4 mr-2" />
-            Generate Flashcards
-          </button>
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center justify-center space-x-2 p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-blue-300"
+          >
+            <Play className="w-5 h-5 text-blue-600" />
+            <span className="font-medium text-gray-700">Watch Original</span>
+          </motion.button>
+          
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center justify-center space-x-2 p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-green-300"
+          >
+            <Download className="w-5 h-5 text-green-600" />
+            <span className="font-medium text-gray-700">Download Notes</span>
+          </motion.button>
+          
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center justify-center space-x-2 p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 border border-gray-200 hover:border-purple-300"
+          >
+            <Brain className="w-5 h-5 text-purple-600" />
+            <span className="font-medium text-gray-700">Generate Cards</span>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
