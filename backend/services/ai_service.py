@@ -1,15 +1,22 @@
 import os
 import json
+import logging
 from typing import List, Dict, Any, Optional
 import google.generativeai as genai
 from models.video_analysis import Summary, Timestamp, Transcript
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class AIService:
     """Service for AI-powered content analysis and generation using Google Gemini"""
     
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
+        logger.info(f"GEMINI_API_KEY loaded: {'Yes' if api_key else 'No'}")
         if not api_key:
+            logger.error("GEMINI_API_KEY environment variable is required")
             raise ValueError("GEMINI_API_KEY environment variable is required")
         
         genai.configure(api_key=api_key)
@@ -74,18 +81,50 @@ class AIService:
             
             timestamps = []
             for topic in topics:
-                timestamp = Timestamp(
-                    time=self._format_time(topic["start_time"]),
-                    seconds=int(topic["start_time"]),
-                    topic=topic["title"],
-                    description=topic["description"],
-                    keywords=topic["keywords"]
-                )
-                timestamps.append(timestamp)
+                if isinstance(topic, dict):
+                    # Handle dictionary input
+                    timestamp = Timestamp(
+                        time=self._format_time(topic.get("start_time", 0)),
+                        seconds=int(topic.get("start_time", 0)),
+                        topic=topic.get("title", "Untitled"),
+                        description=topic.get("description", ""),
+                        keywords=topic.get("keywords", [])
+                    )
+                    timestamps.append(timestamp)
+                elif hasattr(topic, 'model_dump'):  # Pydantic v2
+                    # Convert to dict and create new Timestamp
+                    topic_dict = topic.model_dump()
+                    timestamp = Timestamp(
+                        time=self._format_time(topic_dict.get("seconds", 0)),
+                        seconds=int(topic_dict.get("seconds", 0)),
+                        topic=topic_dict.get("topic", "Untitled"),
+                        description=topic_dict.get("description", ""),
+                        keywords=topic_dict.get("keywords", [])
+                    )
+                    timestamps.append(timestamp)
+                elif hasattr(topic, 'dict'):  # Pydantic v1
+                    # Convert to dict and create new Timestamp
+                    topic_dict = topic.dict()
+                    timestamp = Timestamp(
+                        time=self._format_time(topic_dict.get("seconds", 0)),
+                        seconds=int(topic_dict.get("seconds", 0)),
+                        topic=topic_dict.get("topic", "Untitled"),
+                        description=topic_dict.get("description", ""),
+                        keywords=topic_dict.get("keywords", [])
+                    )
+                    timestamps.append(timestamp)
+                elif isinstance(topic, Timestamp):
+                    # If it's already a Timestamp object, use it directly
+                    timestamps.append(topic)
+            
+            # Sort timestamps by seconds
+            timestamps.sort(key=lambda x: x.seconds)
             
             return timestamps
             
         except Exception as e:
+            logger.error(f"Error in generate_timestamps: {str(e)}")
+            logger.exception("Full traceback:")
             raise Exception(f"Failed to generate timestamps: {str(e)}")
     
     async def _identify_topics(self, transcript: Transcript) -> List[Dict[str, Any]]:
@@ -166,6 +205,200 @@ class AIService:
         remaining_seconds = int(seconds % 60)
         return f"{minutes:02d}:{remaining_seconds:02d}"
     
+    async def _call_gemini_api(self, prompt: str) -> str:
+        """
+        Make a call to Gemini API
+        """
+        try:
+            response = self.model.generate_content(prompt)
+            
+            if response.text:
+                return response.text.strip()
+            else:
+                logger.error("No text in Gemini API response")
+                raise Exception("No response content from AI model")
+                
+        except Exception as e:
+            logger.error(f"Error calling Gemini API: {str(e)}")
+            raise Exception(f"AI service error: {str(e)}")
+    
+    async def generate_flashcards(self, transcript: Transcript, summary: str, num_cards: int = 10) -> List[Dict[str, str]]:
+        """
+        Generate flashcards from video transcript and summary
+        
+        Args:
+            transcript: The transcript object containing text and timestamps
+            summary: The generated summary of the video
+            num_cards: Number of flashcard pairs to generate (default: 10)
+            
+        Returns:
+            List of flashcard dictionaries with 'term' and 'definition' keys
+        """
+        try:
+            # Prepare the prompt for flashcard generation
+            prompt = f"""
+            Based on the following video transcript and summary, create {num_cards} high-quality flashcards.
+            Each flashcard should have a clear term or question (front) and a detailed definition or answer (back).
+            Focus on key concepts, important facts, and technical terms from the content.
+            
+            Summary: {summary}
+            
+            Transcript: {transcript.text[:4000]}  # Using first 4000 chars for context
+            
+            Return the flashcards as a JSON array of objects with 'term' and 'definition' keys.
+            Example:
+            [
+                {{
+                    "term": "What is photosynthesis?",
+                    "definition": "The process by which green plants use sunlight to synthesize foods with the help of chlorophyll."
+                }},
+                ...
+            ]
+            """
+            
+            # Generate the response
+            response = await self._call_gemini_api(prompt)
+            
+            # Parse the response
+            try:
+                # Extract JSON from markdown code block if present
+                if '```json' in response:
+                    response = response.split('```json')[1].split('```')[0].strip()
+                elif '```' in response:
+                    response = response.split('```')[1].strip()
+                
+                flashcards = json.loads(response)
+                if not isinstance(flashcards, list):
+                    raise ValueError("Expected a list of flashcards")
+                
+                # Validate each flashcard
+                valid_flashcards = []
+                for card in flashcards:
+                    if isinstance(card, dict) and 'term' in card and 'definition' in card:
+                        valid_flashcards.append({
+                            'term': str(card['term']).strip(),
+                            'definition': str(card['definition']).strip()
+                        })
+                
+                return valid_flashcards[:num_cards]  # Ensure we don't return more than requested
+                
+            except (json.JSONDecodeError, KeyError, AttributeError) as e:
+                logger.error(f"Error parsing flashcards: {e}")
+                # Fallback to generating simple term-definition pairs
+                return self._generate_simple_flashcards(transcript.text, num_cards)
+                
+        except Exception as e:
+            logger.error(f"Error generating flashcards: {e}")
+            # Fallback to generating simple term-definition pairs
+            return self._generate_simple_flashcards(transcript.text, num_cards)
+    
+    def _generate_simple_flashcards(self, text: str, num_cards: int) -> List[Dict[str, str]]:
+        """Fallback method to generate simple flashcards from text"""
+        import re
+        from collections import Counter
+        
+        # Extract potential terms (capitalized words or phrases in quotes)
+        terms = re.findall(r'"([^"]+)"|([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)', text)
+        terms = [term[0] or term[1] for term in terms if any(term)]
+        
+        # Get most common terms
+        common_terms = [term for term, _ in Counter(terms).most_common(num_cards)]
+        
+        # Create simple flashcards
+        flashcards = []
+        for term in common_terms:
+            # Find the sentence containing the term as a simple definition
+            sentences = re.split(r'(?<=[.!?])\s+', text)
+            for sentence in sentences:
+                if term in sentence and len(sentence) > len(term) + 10:  # Ensure some context
+                    flashcards.append({
+                        'term': term,
+                        'definition': sentence.strip()
+                    })
+                    break
+        
+        return flashcards[:num_cards]
+
+    async def generate_notes(self, transcript: Transcript, summary: Summary, timestamps: List[Timestamp]) -> str:
+        """
+        Generate structured study notes from the video content
+        
+        Args:
+            transcript: The video transcript
+            summary: Generated summary of the video
+            timestamps: List of timestamps with topics
+            
+        Returns:
+            str: Formatted markdown notes
+        """
+        try:
+            # Prepare the prompt for note generation
+            prompt = f"""
+            Create comprehensive study notes from the following video content.
+            
+            Video Summary:
+            {summary.clean_summary}
+            
+            Key Topics (with timestamps):
+            {"\n".join([f"- {ts.time} - {ts.topic}: {ts.description}" for ts in timestamps])}
+            
+            Transcript (first 2000 chars for context):
+            {transcript.full_text[:2000]}
+            
+            Generate well-structured study notes in Markdown format with the following sections:
+            1. # Video Summary
+               - Brief overview of main points
+               - Key takeaways
+            
+            2. # Detailed Notes
+               - Organized by main topics
+               - Include key concepts, definitions, and examples
+               - Use bullet points and sub-bullets for better readability
+            
+            3. # Key Terms & Definitions
+               - Important terms with their definitions
+               - Format as a definition list
+            
+            4. # Action Items
+               - Key actions or steps to take
+               - Follow-up tasks
+            
+            Make the notes clear, concise, and well-organized for effective studying.
+            """
+            
+            # Call the AI to generate notes
+            notes = await self._call_gemini_api(prompt)
+            
+            # Add a header with metadata
+            formatted_notes = f"""
+# Study Notes
+*Generated from video content*
+
+**Difficulty Level**: {summary.difficulty_level.capitalize()}  
+**Estimated Reading Time**: {summary.estimated_reading_time} minutes
+
+---
+
+{notes}
+
+*Notes generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}*
+"""
+            return formatted_notes.strip()
+            
+        except Exception as e:
+            logger.error(f"Error generating notes: {str(e)}")
+            # Fallback to a simple note format if AI generation fails
+            return f"""# Study Notes
+
+## Video Summary
+{summary.clean_summary}
+
+## Key Topics
+{"\n".join([f"- {ts.time} - {ts.topic}" for ts in timestamps])}
+
+*Note: Could not generate detailed notes due to an error.*
+"""
+    
     def _make_gemini_call(self, prompt: str) -> str:
         """
         Make a call to Gemini API
@@ -198,25 +431,36 @@ class AIService:
         """
         Create basic timestamps when AI generation fails
         """
-        timestamps = []
-        chunk_size = len(transcript.segments) // 5  # 5 segments
-        
-        for i in range(0, len(transcript.segments), chunk_size):
-            chunk = transcript.segments[i:i + chunk_size]
-            if chunk:
-                start_time = chunk[0].start
-                end_time = chunk[-1].end
+        try:
+            if not transcript.segments:
+                return []
+                
+            timestamps = []
+            total_segments = len(transcript.segments)
+            chunk_size = max(1, total_segments // 5)  # At least 1 segment per chunk
+            
+            for i in range(0, total_segments, chunk_size):
+                chunk = transcript.segments[i:i + chunk_size]
+                if not chunk:
+                    continue
+                    
+                start_time = getattr(chunk[0], 'start', 0)
+                end_time = getattr(chunk[-1], 'end', start_time + 60)  # Default 1min duration
                 
                 timestamp = Timestamp(
                     time=self._format_time(start_time),
                     seconds=int(start_time),
-                    topic=f"Section {i // chunk_size + 1}",
+                    topic=f"Section {len(timestamps) + 1}",
                     description=f"Content from {self._format_time(start_time)} to {self._format_time(end_time)}",
                     keywords=["content", "section", "video"]
                 )
                 timestamps.append(timestamp)
-        
-        return timestamps
+            
+            return timestamps
+            
+        except Exception as e:
+            logger.error(f"Error in _create_fallback_timestamps: {str(e)}")
+            return []
     
     async def analyze_difficulty(self, transcript: Transcript) -> str:
         """
